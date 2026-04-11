@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Druto/Loya - Earn Free Rewards at Local Businesses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class', 
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95' }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'float-delayed': 'float 6s ease-in-out 3s infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0) translateZ(0)' },
+                            '50%': { transform: 'translateY(-15px) translateZ(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { display: none; }
+        body { 
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            font-family: 'Inter', sans-serif; 
+            overflow-x: hidden; 
+        }
+
+        .smooth-render {
+            transform: translateZ(0);
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+        }
+
+        .glass { 
+            background: rgba(255, 255, 255, 0.7); 
+            backdrop-filter: blur(20px) saturate(180%); 
+            border: 1px solid rgba(255, 255, 255, 0.5); 
+            box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .dark .glass { 
+            background: rgba(15, 23, 42, 0.65); 
+            backdrop-filter: blur(20px) saturate(180%); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .blended-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .dark .blended-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .blended-input {
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        .blended-input:focus {
+            background: rgba(255, 255, 255, 0.7);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+        
+        .dark .blended-input {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .dark .blended-input:focus {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        .slide-up { animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px) translateZ(0); } to { opacity: 1; transform: translateY(0) translateZ(0); } }
+        
+        .toast-enter { animation: toastEnter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        .toast-leave { animation: toastLeave 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        @keyframes toastEnter { from { opacity: 0; transform: translateX(100%) translateZ(0); } to { opacity: 1; transform: translateX(0) translateZ(0); } }
+        @keyframes toastLeave { from { opacity: 1; transform: translateX(0) translateZ(0); } to { opacity: 0; transform: translateX(100%) translateZ(0); } }
+
+        /* Smooth Bottom Fade Mask */
+        .bottom-blend {
+            mask-image: linear-gradient(to bottom, black 50%, transparent 95%);
+            -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 95%);
+        }
+    </style>
+</head>
+<body class="p-2 text-slate-800 dark:text-slate-100 antialiased selection:bg-brand-500 selection:text-white flex flex-col min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#eff6ff] to-[#f5f3ff] dark:from-slate-950 dark:via-[#0f172a] dark:to-[#1e1b4b] bg-fixed transition-colors duration-700 box-border smooth-render">
+
+    <div id="toast-container" class="fixed bottom-2 right-2 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <nav class="fixed top-2 left-2 right-2 z-40 glass rounded-2xl transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-14 sm:h-16">
+                <div class="flex items-center cursor-pointer group" onclick="app.navigateTo('landing')">
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-brand-500/30 mr-3 group-hover:scale-105 transition-transform duration-300">L</div>
+                    <span class="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">Loya</span>
+                </div>
+                <div class="flex items-center gap-2 sm:gap-4">
+                    <div id="nav-actions" class="flex space-x-3"></div>
+                    <button onclick="app.toggleTheme()" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors focus:outline-none">
+                        <i id="theme-icon" class="fa-solid fa-moon text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow pt-20 relative w-full h-full rounded-3xl">
+        <div class="fixed top-[0%] left-[-10%] w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] rounded-full bg-brand-400/20 dark:bg-brand-600/10 blur-[100px] -z-10 pointer-events-none animate-float smooth-render"></div>
+        <div class="fixed bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] max-w-[500px] max-h-[500px] rounded-full bg-blue-400/20 dark:bg-blue-600/10 blur-[100px] -z-10 pointer-events-none animate-float-delayed smooth-render"></div>
+
+        <section id="view-landing" class="view-section min-h-[calc(100vh-100px)] flex flex-col items-center justify-start relative overflow-hidden">
+            
+            <div class="flex flex-col items-center gap-3 py-6 z-20 slide-up" style="animation-delay: 0.1s;">
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <button onclick="app.navigateTo('customer-auth')" class="group relative px-6 py-3.5 bg-brand-700 hover:bg-brand-600 text-white rounded-2xl font-bold text-lg shadow-2xl transition-all duration-300">
+                        Start Free Trial <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                    <button onclick="app.navigateTo('customer-auth')" class="px-6 py-3.5 glass text-slate-800 dark:text-white rounded-2xl font-bold text-lg border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:shadow-md">
+                        I'm a customer
+                    </button>
+                </div>
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">3-day free trial • No payment required • Cancel anytime</p>
+            </div>
+
+            <div class="w-full relative flex justify-center bottom-blend smooth-render z-10 slide-up mt-8 h-[340px] sm:h-[480px] md:h-[640px] lg:h-[750px] overflow-hidden" style="animation-delay: 0.2s;">
+                
+                <div class="absolute top-0 w-[1000px] h-[750px] scale-[0.45] sm:scale-[0.65] md:scale-[0.85] lg:scale-100 origin-top smooth-render">
+                    
+                    <div class="absolute w-[280px] h-[606px] left-[130px] top-[100px] rounded-[48px] border-[14px] border-slate-900 dark:border-white shadow-2xl shadow-slate-900/40 transform -rotate-[10deg] z-0 overflow-hidden smooth-render bg-slate-900 transition-colors duration-500">
+                        <img src="banner_2.png" alt="Left Phone Screen" class="w-full h-full object-cover">
+                    </div>
+
+                    <div class="absolute w-[280px] h-[606px] right-[130px] top-[100px] rounded-[48px] border-[14px] border-slate-900 dark:border-white shadow-2xl shadow-slate-900/40 transform rotate-[10deg] z-0 overflow-hidden smooth-render bg-slate-900 transition-colors duration-500">
+                        <img src="banner_3.png" alt="Right Phone Screen" class="w-full h-full object-cover">
+                    </div>
+
+                    <div class="absolute w-[320px] h-[693px] left-1/2 top-0 transform -translate-x-1/2 rounded-[54px] border-[16px] border-slate-950 dark:border-white shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] dark:shadow-[0_35px_60px_-15px_rgba(255,255,255,0.1)] z-10 overflow-hidden smooth-render bg-slate-950 transition-colors duration-500">
+                        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[110px] h-[32px] bg-black rounded-b-3xl z-20"></div>
+                        <img src="banner_1.png" alt="Main Phone Screen" class="w-full h-full object-cover">
+                    </div>
+
+                    <div class="absolute top-[160px] right-[200px] blended-card p-5 rounded-3xl flex items-center gap-5 z-20 shadow-2xl animate-float smooth-render border border-white/60">
+                        <div class="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center text-3xl shadow-inner smooth-render">
+                            <i class="fa-solid fa-arrow-trend-up"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">GROWTH</p>
+                            <p class="text-2xl font-black text-slate-900 dark:text-white mt-1 whitespace-nowrap">40% More Repeats</p>
+                        </div>
+                    </div>
+
+                    <div class="absolute bottom-[200px] left-[200px] blended-card p-5 rounded-3xl flex items-center gap-5 z-20 shadow-2xl animate-float-delayed smooth-render border border-white/60">
+                        <div class="w-16 h-16 rounded-full bg-amber-500 text-white flex items-center justify-center text-3xl shadow-inner smooth-render">
+                            <i class="fa-solid fa-chart-simple"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">PROFIT</p>
+                            <p class="text-2xl font-black text-slate-900 dark:text-white mt-1 whitespace-nowrap">Boost Revenue</p>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+            
+            <div class="text-center pt-2 pb-12 z-10 smooth-render slide-up" style="animation-delay: 0.3s;">
+                <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-white mb-3 leading-tight">
+                    Why businesses choose Druto
+                </h2>
+                <p class="text-lg text-slate-600 dark:text-slate-400 max-w-lg mx-auto font-medium">
+                    Everything you need to boost repeat customers
+                </p>
+            </div>
+            
+        </section>
+
+        <section id="view-business-auth" class="view-section hidden min-h-[calc(100vh-100px)] flex items-center justify-center py-4 relative">
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+            
+            <div class="w-full max-w-lg blended-card rounded-[2.5rem] p-8 sm:p-12 slide-up z-10">
+                <div class="text-center mb-10">
+                    <div class="w-20 h-20 bg-slate-900 dark:bg-brand-600 rounded-3xl flex items-center justify-center text-white text-3xl mx-auto mb-6 shadow-2xl shadow-slate-900/20 dark:shadow-brand-500/30 transform -rotate-3 hover:rotate-0 transition-transform duration-300">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                    <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Partner Portal</h2>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm mt-2 font-medium">Set up your loyalty program in seconds</p>
+                </div>
+                
+                <form id="form-business-reg" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 ml-1">Business Name</label>
+                        <input type="text" id="b-name" required class="w-full px-5 py-4 rounded-2xl blended-input outline-none dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-4 focus:ring-brand-500/10 transition-all font-medium text-lg" placeholder="e.g. Central Perk Cafe">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 ml-1">Category</label>
+                        <select id="b-category" class="w-full px-5 py-4 rounded-2xl blended-input outline-none dark:text-white appearance-none focus:ring-4 focus:ring-brand-500/10 transition-all font-medium text-lg cursor-pointer">
+                            <option value="Cafe" class="dark:bg-slate-800">Cafe</option>
+                            <option value="Restaurant" class="dark:bg-slate-800">Restaurant</option>
+                            <option value="Food Truck" class="dark:bg-slate-800">Food Truck</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 ml-1">Visits for Free Reward</label>
+                        <input type="number" id="b-threshold" required min="2" max="20" value="5" class="w-full px-5 py-4 rounded-2xl blended-input outline-none dark:text-white focus:ring-4 focus:ring-brand-500/10 transition-all font-mono text-xl font-bold">
+                    </div>
+                    <button type="submit" class="w-full py-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-2xl font-bold text-lg shadow-xl hover:-translate-y-1 transition-all mt-8 flex justify-center items-center group">
+                        LOGIN
+                    </button>
+                </form>
+                
+                <div class="mt-8 text-center pt-6 border-t border-slate-200/50 dark:border-white/10">
+                    <button onclick="app.loginDemoBusiness()" class="text-slate-500 dark:text-slate-400 font-medium text-sm hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
+                        Just testing? <span class="underline decoration-2 underline-offset-4">Load Demo Account</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-customer-auth" class="view-section hidden min-h-[calc(100vh-100px)] flex items-center justify-center py-4 relative">            
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+            <div class="w-full max-w-sm blended-card rounded-[2.5rem] p-8 sm:p-10 slide-up z-10">
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-3xl flex items-center justify-center text-white text-4xl mx-auto mb-6 shadow-2xl shadow-emerald-500/40 transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                        <i class="fa-solid fa-mobile-screen"></i>
+                    </div>
+                    <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Sign In</h2>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm mt-2 font-medium">Enter your number to start earning</p>
+                </div>
+                
+                <form id="form-customer-login" class="space-y-6">
+                    <div>
+                        <div class="relative">
+                            <span class="absolute left-5 top-4 text-slate-400 dark:text-slate-500 font-bold text-lg">+1</span>
+                            <input type="tel" id="c-phone" required pattern="[0-9]{10}" placeholder="000 000 0000" class="w-full pl-14 pr-5 py-4 rounded-2xl blended-input outline-none font-mono text-xl tracking-widest font-bold dark:text-white placeholder-slate-300 dark:placeholder-slate-600 focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all">
+                        </div>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mt-3 text-center font-medium">For demo purposes, enter any 10 digits</p>
+                    </div>
+                    <button type="submit" class="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-500/20 hover:-translate-y-1 transition-all flex justify-center items-center">
+                        LOGIN
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <section id="view-business-dashboard" class="view-section hidden max-w-7xl mx-auto py-8 slide-up">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div>
+                    <h2 id="dash-b-name" class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h2>
+                    <p class="text-slate-500 dark:text-slate-400 mt-1">Business ID: <span id="dash-b-id" class="font-mono bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300 font-bold select-all"></span></p>
+                </div>
+                <div class="flex gap-3">
+                    <div class="glass px-4 py-2 rounded-xl flex items-center text-sm font-medium">
+                        <i class="fa-solid fa-star text-amber-400 mr-2"></i> Rule: <span id="dash-b-rule" class="ml-1 font-bold text-slate-900 dark:text-white"></span> visits = Free Item
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                <div class="glass p-5 rounded-3xl relative overflow-hidden group flex flex-col justify-between hover:shadow-lg transition-all duration-300">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full group-hover:scale-150 transition-transform duration-500 smooth-render"></div>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-slate-500 dark:text-slate-400 font-bold text-xs sm:text-sm uppercase tracking-widest">Customers</p>
+                        <i class="fa-solid fa-users text-blue-500 text-xl sm:text-2xl"></i>
+                    </div>
+                    <h3 id="stat-customers" class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">0</h3>
+                </div>
+                
+                <div class="glass p-5 rounded-3xl relative overflow-hidden group flex flex-col justify-between hover:shadow-lg transition-all duration-300">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-brand-500/10 rounded-full group-hover:scale-150 transition-transform duration-500 smooth-render"></div>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-slate-500 dark:text-slate-400 font-bold text-xs sm:text-sm uppercase tracking-widest">Visits</p>
+                        <i class="fa-solid fa-door-open text-brand-500 text-xl sm:text-2xl"></i>
+                    </div>
+                    <h3 id="stat-visits" class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">0</h3>
+                </div>
+                
+                <div class="glass p-5 rounded-3xl relative overflow-hidden group flex flex-col justify-between hover:shadow-lg transition-all duration-300">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/10 rounded-full group-hover:scale-150 transition-transform duration-500 smooth-render"></div>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-slate-500 dark:text-slate-400 font-bold text-xs sm:text-sm uppercase tracking-widest">Rewards</p>
+                        <i class="fa-solid fa-gift text-amber-500 text-xl sm:text-2xl"></i>
+                    </div>
+                    <h3 id="stat-rewards" class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">0</h3>
+                </div>
+                
+                <div class="glass bg-gradient-to-br from-slate-900 to-slate-800 dark:from-brand-900 dark:to-indigo-900 text-white p-5 rounded-3xl relative overflow-hidden flex flex-col justify-center items-center text-center shadow-xl">
+                    <i class="fa-solid fa-qrcode text-3xl sm:text-4xl mb-2 text-white/80"></i>
+                    <p class="text-xs sm:text-sm font-bold uppercase tracking-widest text-slate-300 dark:text-slate-400">Scan ID</p>
+                    <p class="text-xl sm:text-2xl font-mono font-black mt-1" id="dash-qr-text"></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 glass rounded-3xl p-6">
+                    <h3 class="text-xl font-bold mb-4 flex items-center dark:text-white">
+                        <i class="fa-solid fa-clock-rotate-left text-brand-500 mr-2"></i> Pending Verifications
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 text-sm">
+                                    <th class="pb-3 font-medium">Customer (Phone)</th>
+                                    <th class="pb-3 font-medium">Time</th>
+                                    <th class="pb-3 font-medium text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-pending">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="glass rounded-3xl p-6">
+                    <h3 class="text-xl font-bold mb-4 flex items-center dark:text-white">
+                        <i class="fa-solid fa-bolt text-amber-500 mr-2"></i> Recent Activity
+                    </h3>
+                    <div id="list-activity" class="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                        </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-customer-portal" class="view-section hidden max-w-md mx-auto py-8 slide-up">
+            
+            <div class="glass-dark rounded-3xl p-6 text-white mb-6 relative overflow-hidden shadow-2xl">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-brand-500 to-indigo-500 rounded-bl-full opacity-20"></div>
+                <div class="flex items-center justify-between mb-4 relative z-10">
+                    <div>
+                        <p class="text-slate-300 text-sm font-medium">Logged in as</p>
+                        <h2 id="portal-phone" class="text-2xl font-mono font-bold tracking-wider"></h2>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/20 backdrop-blur-sm">
+                        <i class="fa-solid fa-user text-xl"></i>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 border-t border-white/10 pt-4 relative z-10">
+                    <div>
+                        <p class="text-slate-400 text-xs uppercase tracking-wider mb-1 font-bold">Total Visits</p>
+                        <p id="portal-visits" class="text-4xl font-black">0</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-xs uppercase tracking-wider mb-1 font-bold">Rewards</p>
+                        <p id="portal-rewards" class="text-4xl font-black text-amber-400">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="blended-card rounded-3xl p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4 flex items-center text-slate-800 dark:text-white">
+                    <i class="fa-solid fa-qrcode text-brand-500 mr-2"></i> Quick Check-in
+                </h3>
+                <form id="form-checkin" class="flex flex-col sm:flex-row gap-3">
+                    <input type="text" id="ci-business-id" required placeholder="Enter Business ID" class="flex-grow px-5 py-4 rounded-2xl blended-input outline-none font-mono uppercase dark:text-white placeholder-slate-400 text-lg font-bold">
+                    <button type="submit" class="bg-brand-600 hover:bg-brand-500 text-white px-6 py-4 rounded-2xl font-bold shadow-md hover:-translate-y-1 transition-all whitespace-nowrap">
+                        Scan ID
+                    </button>
+                </form>
+            </div>
+
+            <div id="active-checkin-card" class="hidden bg-amber-50 dark:bg-amber-950/40 rounded-3xl p-6 mb-6 border border-amber-200 dark:border-amber-900/50 relative overflow-hidden backdrop-blur-md shadow-lg">
+                <div class="flex items-start">
+                    <div class="text-amber-500 text-2xl mr-4 mt-1"><i class="fa-solid fa-spinner fa-spin"></i></div>
+                    <div>
+                        <h3 class="font-bold text-lg text-amber-900 dark:text-amber-500">Awaiting Verification</h3>
+                        <p class="text-sm text-amber-700 dark:text-amber-200/70 mb-4 mt-1 font-medium">Show this OTP to the cashier to confirm your visit.</p>
+                        <div class="bg-white dark:bg-slate-900 px-5 py-3 rounded-2xl border border-amber-200 dark:border-amber-900/50 inline-block shadow-sm">
+                            <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1 uppercase font-bold tracking-wider">Your OTP</span>
+                            <span id="portal-otp" class="text-4xl font-mono font-black tracking-[0.2em] text-slate-900 dark:text-white"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reward-card" class="hidden bg-gradient-to-r from-amber-400 to-orange-500 rounded-3xl p-8 mb-6 shadow-xl shadow-orange-500/30 text-white text-center transform hover:scale-[1.02] transition-transform cursor-pointer smooth-render" onclick="app.redeemReward()">
+                <div class="text-5xl mb-4"><i class="fa-solid fa-gift fa-bounce"></i></div>
+                <h3 class="font-black text-2xl mb-1">Reward Unlocked!</h3>
+                <p class="text-sm text-amber-100 mb-6 font-medium">Tap to redeem your free item now.</p>
+                <div class="inline-block bg-white/20 backdrop-blur-md px-8 py-3 rounded-full text-sm font-bold border border-white/40 uppercase tracking-widest shadow-inner">
+                    Redeem Now
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <div id="modal-verify" class="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 smooth-render">
+        <div class="glass rounded-[2.5rem] p-8 w-full max-w-sm transform scale-95 transition-transform duration-300 shadow-2xl" id="modal-verify-content">
+            <h3 class="text-2xl font-bold mb-2 dark:text-white">Verify Visit</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium">Enter the 4-digit OTP shown on the customer's phone.</p>
+            
+            <input type="hidden" id="verify-visit-id">
+            
+            <div class="flex justify-center gap-3 mb-8">
+                <input type="text" maxlength="1" class="otp-input w-16 h-20 text-center text-3xl font-bold rounded-2xl border border-slate-300 dark:border-slate-700 focus:border-brand-500 dark:focus:border-brand-400 focus:ring-4 focus:ring-brand-200 dark:focus:ring-brand-900/30 outline-none bg-white/50 dark:bg-slate-900/50 dark:text-white transition-all shadow-sm">
+                <input type="text" maxlength="1" class="otp-input w-16 h-20 text-center text-3xl font-bold rounded-2xl border border-slate-300 dark:border-slate-700 focus:border-brand-500 dark:focus:border-brand-400 focus:ring-4 focus:ring-brand-200 dark:focus:ring-brand-900/30 outline-none bg-white/50 dark:bg-slate-900/50 dark:text-white transition-all shadow-sm">
+                <input type="text" maxlength="1" class="otp-input w-16 h-20 text-center text-3xl font-bold rounded-2xl border border-slate-300 dark:border-slate-700 focus:border-brand-500 dark:focus:border-brand-400 focus:ring-4 focus:ring-brand-200 dark:focus:ring-brand-900/30 outline-none bg-white/50 dark:bg-slate-900/50 dark:text-white transition-all shadow-sm">
+                <input type="text" maxlength="1" class="otp-input w-16 h-20 text-center text-3xl font-bold rounded-2xl border border-slate-300 dark:border-slate-700 focus:border-brand-500 dark:focus:border-brand-400 focus:ring-4 focus:ring-brand-200 dark:focus:ring-brand-900/30 outline-none bg-white/50 dark:bg-slate-900/50 dark:text-white transition-all shadow-sm">
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="app.closeModal()" class="flex-1 py-4 bg-slate-200/50 dark:bg-slate-800 hover:bg-slate-300/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl font-bold transition-colors">Cancel</button>
+                <button onclick="app.confirmOTP()" class="flex-1 py-4 bg-brand-600 hover:bg-brand-500 text-white rounded-2xl font-bold shadow-md transition-colors">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            db: {
+                businesses: JSON.parse(localStorage.getItem('loya_businesses')) || [],
+                customers: JSON.parse(localStorage.getItem('loya_customers')) || [],
+                visits: JSON.parse(localStorage.getItem('loya_visits')) || [],
+                rewards: JSON.parse(localStorage.getItem('loya_rewards')) || []
+            },
+            
+            session: {
+                type: null,
+                id: null
+            },
+
+            initTheme() {
+                const savedTheme = localStorage.getItem('loya_theme');
+                const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                
+                if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
+                    document.documentElement.classList.add('dark');
+                    this.updateThemeIcon(true);
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    this.updateThemeIcon(false);
+                }
+            },
+
+            toggleTheme() {
+                document.documentElement.classList.toggle('dark');
+                const isDark = document.documentElement.classList.contains('dark');
+                localStorage.setItem('loya_theme', isDark ? 'dark' : 'light');
+                this.updateThemeIcon(isDark);
+            },
+
+            updateThemeIcon(isDark) {
+                const icon = document.getElementById('theme-icon');
+                if (icon) {
+                    if (isDark) {
+                        icon.classList.remove('fa-moon');
+                        icon.classList.add('fa-sun');
+                        icon.classList.replace('text-slate-500', 'text-amber-400');
+                    } else {
+                        icon.classList.remove('fa-sun');
+                        icon.classList.add('fa-moon');
+                        icon.classList.replace('text-amber-400', 'text-slate-500');
+                    }
+                }
+            },
+
+            save() {
+                localStorage.setItem('loya_businesses', JSON.stringify(this.db.businesses));
+                localStorage.setItem('loya_customers', JSON.stringify(this.db.customers));
+                localStorage.setItem('loya_visits', JSON.stringify(this.db.visits));
+                localStorage.setItem('loya_rewards', JSON.stringify(this.db.rewards));
+            },
+
+            init() {
+                this.initTheme();
+
+                const otpInputs = document.querySelectorAll('.otp-input');
+                otpInputs.forEach((input, index) => {
+                    input.addEventListener('keyup', (e) => {
+                        if (e.key >= 0 && e.key <= 9 && index < otpInputs.length - 1) otpInputs[index + 1].focus();
+                        if (e.key === 'Backspace' && index > 0) otpInputs[index - 1].focus();
+                    });
+                });
+
+                document.getElementById('form-business-reg').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.registerBusiness();
+                });
+                
+                document.getElementById('form-customer-login').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.loginCustomer();
+                });
+
+                document.getElementById('form-checkin').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.requestCheckIn();
+                });
+
+                const storedSession = sessionStorage.getItem('loya_session');
+                if (storedSession) {
+                    this.session = JSON.parse(storedSession);
+                    if (this.session.type === 'business') this.navigateTo('business-dashboard');
+                    else if (this.session.type === 'customer') this.navigateTo('customer-portal');
+                } else {
+                    this.navigateTo('landing');
+                }
+            },
+
+            navigateTo(view) {
+                document.querySelectorAll('.view-section').forEach(el => {
+                    el.classList.add('hidden');
+                    el.classList.remove('slide-up');
+                });
+                
+                const target = document.getElementById(`view-${view}`);
+                if(target) {
+                    target.classList.remove('hidden');
+                    void target.offsetWidth; 
+                    target.classList.add('slide-up');
+                }
+
+                this.renderNavActions(view);
+
+                if(view === 'business-dashboard') this.renderBusinessDashboard();
+                if(view === 'customer-portal') this.renderCustomerPortal();
+            },
+
+            renderNavActions(view) {
+                const nav = document.getElementById('nav-actions');
+                if(view === 'landing') {
+                    nav.innerHTML = ``;
+                } else if (['business-dashboard', 'customer-portal'].includes(view)) {
+                    nav.innerHTML = `<button onclick="app.logout()" class="text-sm font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-4 py-2 rounded-xl hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors">Logout</button>`;
+                } else {
+                    nav.innerHTML = `<button onclick="app.navigateTo('landing')" class="text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-brand-500 dark:hover:text-brand-400 px-3 py-2 transition-colors"><i class="fa-solid fa-house"></i></button>`;
+                }
+            },
+
+            logout() {
+                this.session = { type: null, id: null };
+                sessionStorage.removeItem('loya_session');
+                this.navigateTo('landing');
+                this.showToast('Logged out successfully', 'info');
+            },
+
+            showToast(message, type = 'success') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                const colors = {
+                    success: 'bg-emerald-500',
+                    error: 'bg-red-500',
+                    info: 'bg-blue-500'
+                };
+                const icons = {
+                    success: 'fa-check-circle',
+                    error: 'fa-circle-exclamation',
+                    info: 'fa-info-circle'
+                };
+                
+                toast.className = `toast-enter flex items-center px-5 py-4 rounded-2xl text-white shadow-xl ${colors[type]} smooth-render font-medium`;
+                toast.innerHTML = `<i class="fa-solid ${icons[type]} mr-3 text-lg"></i><span>${message}</span>`;
+                
+                container.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.classList.replace('toast-enter', 'toast-leave');
+                    setTimeout(() => toast.remove(), 400);
+                }, 3000);
+            },
+
+            registerBusiness() {
+                const name = document.getElementById('b-name').value;
+                const cat = document.getElementById('b-category').value;
+                const threshold = parseInt(document.getElementById('b-threshold').value);
+                const id = 'B' + Math.random().toString(36).substr(2, 5).toUpperCase();
+
+                const newBiz = { id, name, category: cat, threshold, createdAt: Date.now() };
+                this.db.businesses.push(newBiz);
+                this.save();
+                
+                this.setSession('business', id);
+                this.showToast('Business Registered Successfully');
+                this.navigateTo('business-dashboard');
+            },
+
+            loginDemoBusiness() {
+                let demoBiz = this.db.businesses.find(b => b.name === 'Demo Cafe');
+                if(!demoBiz) {
+                    demoBiz = { id: 'DEMO123', name: 'Demo Cafe', category: 'Cafe', threshold: 3, createdAt: Date.now() };
+                    this.db.businesses.push(demoBiz);
+                    this.save();
+                }
+                this.setSession('business', demoBiz.id);
+                this.showToast('Logged into Demo Cafe');
+                this.navigateTo('business-dashboard');
+            },
+
+            renderBusinessDashboard() {
+                const biz = this.db.businesses.find(b => b.id === this.session.id);
+                if(!biz) return this.logout();
+
+                document.getElementById('dash-b-name').innerText = biz.name;
+                document.getElementById('dash-b-id').innerText = biz.id;
+                document.getElementById('dash-b-rule').innerText = biz.threshold;
+                document.getElementById('dash-qr-text').innerText = biz.id;
+
+                const bizVisits = this.db.visits.filter(v => v.businessId === biz.id);
+                const uniqueCustomers = new Set(bizVisits.map(v => v.customerPhone)).size;
+                const approvedVisits = bizVisits.filter(v => v.status === 'approved').length;
+                const bizRewards = this.db.rewards.filter(r => r.businessId === biz.id && r.status === 'redeemed').length;
+
+                document.getElementById('stat-customers').innerText = uniqueCustomers;
+                document.getElementById('stat-visits').innerText = approvedVisits;
+                document.getElementById('stat-rewards').innerText = bizRewards;
+
+                const pending = bizVisits.filter(v => v.status === 'pending').sort((a,b) => b.date - a.date);
+                const table = document.getElementById('table-pending');
+                if(pending.length === 0) {
+                    table.innerHTML = `<tr><td colspan="3" class="py-8 text-center text-slate-400 dark:text-slate-500 italic font-medium">No pending verifications.</td></tr>`;
+                } else {
+                    table.innerHTML = pending.map(v => `
+                        <tr class="border-b border-slate-100 dark:border-slate-800/50 last:border-0 fade-in">
+                            <td class="py-4 font-mono text-sm font-bold dark:text-slate-300">${this.formatPhone(v.customerPhone)}</td>
+                            <td class="py-4 text-xs font-medium text-slate-500 dark:text-slate-400">${this.timeAgo(v.date)}</td>
+                            <td class="py-4 text-right">
+                                <button onclick="app.openVerifyModal('${v.id}')" class="px-4 py-2 bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl text-sm font-bold hover:bg-brand-100 dark:hover:bg-brand-500/20 transition-colors">Verify OTP</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+
+                const list = document.getElementById('list-activity');
+                const activity = [...bizVisits.filter(v => v.status === 'approved'), ...this.db.rewards.filter(r => r.businessId === biz.id && r.status === 'redeemed')]
+                                .sort((a,b) => b.date - a.date).slice(0, 5);
+                
+                if(activity.length === 0) {
+                    list.innerHTML = `<div class="text-center text-slate-400 dark:text-slate-500 italic font-medium py-8">No recent activity.</div>`;
+                } else {
+                    list.innerHTML = activity.map(item => {
+                        const isReward = item.status === 'redeemed';
+                        const icon = isReward ? '<i class="fa-solid fa-gift text-amber-500 dark:text-amber-400"></i>' : '<i class="fa-solid fa-check text-emerald-500 dark:text-emerald-400"></i>';
+                        const bg = isReward ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10';
+                        const text = isReward ? `Reward Redeemed` : `Visit Approved`;
+                        return `
+                        <div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/50 dark:hover:bg-slate-800/50 transition-colors fade-in">
+                            <div class="w-12 h-12 rounded-full ${bg} flex items-center justify-center shrink-0">
+                                ${icon}
+                            </div>
+                            <div class="flex-grow">
+                                <p class="text-sm font-bold text-slate-800 dark:text-slate-200">${text}</p>
+                                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">${this.formatPhone(item.customerPhone)}</p>
+                            </div>
+                            <div class="text-xs font-bold text-slate-400 dark:text-slate-500">${this.timeAgo(item.date)}</div>
+                        </div>`;
+                    }).join('');
+                }
+            },
+
+            openVerifyModal(visitId) {
+                document.getElementById('verify-visit-id').value = visitId;
+                document.querySelectorAll('.otp-input').forEach(i => i.value = '');
+                
+                const modal = document.getElementById('modal-verify');
+                const content = document.getElementById('modal-verify-content');
+                
+                modal.classList.remove('hidden');
+                void modal.offsetWidth;
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+                
+                setTimeout(() => document.querySelectorAll('.otp-input')[0].focus(), 100);
+            },
+
+            closeModal() {
+                const modal = document.getElementById('modal-verify');
+                const content = document.getElementById('modal-verify-content');
+                
+                modal.classList.add('opacity-0');
+                content.classList.remove('scale-100');
+                content.classList.add('scale-95');
+                
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            },
+
+            confirmOTP() {
+                const inputs = document.querySelectorAll('.otp-input');
+                let typedOTP = '';
+                inputs.forEach(i => typedOTP += i.value);
+                
+                if(typedOTP.length !== 4) return this.showToast('Enter 4 digit OTP', 'error');
+
+                const visitId = document.getElementById('verify-visit-id').value;
+                const visit = this.db.visits.find(v => v.id === visitId);
+
+                if(visit.otp !== typedOTP) {
+                    inputs.forEach(i => { i.value = ''; i.classList.add('border-red-500', 'dark:border-red-500', 'bg-red-50', 'dark:bg-red-500/10'); });
+                    setTimeout(() => inputs.forEach(i => i.classList.remove('border-red-500', 'dark:border-red-500', 'bg-red-50', 'dark:bg-red-500/10')), 500);
+                    return this.showToast('Invalid OTP', 'error');
+                }
+
+                visit.status = 'approved';
+                visit.date = Date.now();
+                this.save();
+                
+                this.processLoyaltyLogic(visit.businessId, visit.customerPhone);
+
+                this.closeModal();
+                this.showToast('Visit Verified Successfully');
+                this.renderBusinessDashboard();
+            },
+
+            processLoyaltyLogic(bizId, phone) {
+                const biz = this.db.businesses.find(b => b.id === bizId);
+                const approvedVisits = this.db.visits.filter(v => v.businessId === bizId && v.customerPhone === phone && v.status === 'approved').length;
+                
+                if(approvedVisits > 0 && approvedVisits % biz.threshold === 0) {
+                    this.db.rewards.push({
+                        id: 'R' + Date.now(),
+                        businessId: bizId,
+                        customerPhone: phone,
+                        status: 'unlocked',
+                        date: Date.now()
+                    });
+                    this.save();
+                }
+            },
+
+            loginCustomer() {
+                const phone = document.getElementById('c-phone').value;
+                
+                let user = this.db.customers.find(c => c.phone === phone);
+                if(!user) {
+                    user = { phone, joined: Date.now() };
+                    this.db.customers.push(user);
+                    this.save();
+                }
+
+                this.setSession('customer', phone);
+                this.navigateTo('customer-portal');
+                this.showToast('Logged in successfully');
+            },
+
+            renderCustomerPortal() {
+                const phone = this.session.id;
+                document.getElementById('portal-phone').innerText = this.formatPhone(phone);
+                document.getElementById('ci-business-id').value = '';
+
+                const userVisits = this.db.visits.filter(v => v.customerPhone === phone);
+                const totalAppr = userVisits.filter(v => v.status === 'approved').length;
+                
+                const userRewards = this.db.rewards.filter(r => r.customerPhone === phone);
+                const unlockedReward = userRewards.find(r => r.status === 'unlocked');
+
+                document.getElementById('portal-visits').innerText = totalAppr;
+                document.getElementById('portal-rewards').innerText = userRewards.length;
+
+                const pendingVisit = userVisits.find(v => v.status === 'pending');
+                const checkInCard = document.getElementById('active-checkin-card');
+                const checkInForm = document.getElementById('form-checkin').parentElement;
+
+                if(pendingVisit) {
+                    checkInForm.classList.add('hidden');
+                    checkInCard.classList.remove('hidden');
+                    document.getElementById('portal-otp').innerText = pendingVisit.otp;
+                } else {
+                    checkInForm.classList.remove('hidden');
+                    checkInCard.classList.add('hidden');
+                }
+
+                const rewardCard = document.getElementById('reward-card');
+                if(unlockedReward && !pendingVisit) {
+                    rewardCard.classList.remove('hidden');
+                } else {
+                    rewardCard.classList.add('hidden');
+                }
+            },
+
+            requestCheckIn() {
+                const bizId = document.getElementById('ci-business-id').value.toUpperCase();
+                const biz = this.db.businesses.find(b => b.id === bizId);
+
+                if(!biz) return this.showToast('Business ID not found', 'error');
+
+                const existing = this.db.visits.find(v => v.customerPhone === this.session.id && v.status === 'pending');
+                if(existing) return this.showToast('You already have a pending check-in', 'error');
+
+                const otp = Math.floor(1000 + Math.random() * 9000).toString();
+                
+                this.db.visits.push({
+                    id: 'V' + Date.now(),
+                    businessId: bizId,
+                    customerPhone: this.session.id,
+                    status: 'pending',
+                    otp: otp,
+                    date: Date.now()
+                });
+                this.save();
+                
+                this.showToast('Check-in requested. Show OTP to cashier.');
+                this.renderCustomerPortal();
+            },
+
+            redeemReward() {
+                const phone = this.session.id;
+                const rewardIndex = this.db.rewards.findIndex(r => r.customerPhone === phone && r.status === 'unlocked');
+                
+                if(rewardIndex !== -1) {
+                    const btn = document.getElementById('reward-card');
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = `<div class="py-8"><div class="loader mb-3"></div><p class="font-bold text-lg mt-2 tracking-wide">REDEEMING...</p></div>`;
+                    
+                    setTimeout(() => {
+                        this.db.rewards[rewardIndex].status = 'redeemed';
+                        this.db.rewards[rewardIndex].date = Date.now();
+                        this.save();
+                        this.showToast('Reward Redeemed! Enjoy!', 'success');
+                        this.renderCustomerPortal();
+                        
+                        setTimeout(() => {
+                            btn.innerHTML = originalHtml;
+                        }, 500);
+                    }, 1200);
+                }
+            },
+
+            setSession(type, id) {
+                this.session = { type, id };
+                sessionStorage.setItem('loya_session', JSON.stringify(this.session));
+            },
+            
+            formatPhone(str) {
+                if(!str) return '';
+                return `+1 (${str.substring(0,3)}) ${str.substring(3,6)}-${str.substring(6,10)}`;
+            },
+
+            timeAgo(date) {
+                const seconds = Math.floor((new Date() - date) / 1000);
+                let interval = seconds / 31536000;
+                if (interval > 1) return Math.floor(interval) + " y ago";
+                interval = seconds / 2592000;
+                if (interval > 1) return Math.floor(interval) + " mo ago";
+                interval = seconds / 86400;
+                if (interval > 1) return Math.floor(interval) + " d ago";
+                interval = seconds / 3600;
+                if (interval > 1) return Math.floor(interval) + " h ago";
+                interval = seconds / 60;
+                if (interval > 1) return Math.floor(interval) + " m ago";
+                return "Just now";
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => app.init());
+
+    </script>
+</body>
+</html>
