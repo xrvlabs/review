@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GridLabs - India Precision</title>
+    <title>GridLabs - Pure India</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Quantico:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -11,11 +11,10 @@
     <style>
         * { font-family: 'Quantico', sans-serif; }
         
-        /* FIX: Set background color to match the mask to prevent 'flashes' */
         #map { 
             height: 100vh; 
             width: 100%; 
-            background: #f3f4f6; /* Gray-100 to match the mask */
+            background: #e5e7eb; /* Gray-200 background for a clean base */
         }
 
         .leaflet-popup-content-wrapper { padding: 0; overflow: hidden; border-radius: 12px; }
@@ -25,7 +24,31 @@
             background-color: #ff5722; 
             width: 18px; height: 18px;
             border-radius: 50%; border: 3px solid white;
-            box-shadow: 0 0 15px rgba(255, 87, 34, 0.5);
+            box-shadow: 0 0 15px rgba(255, 87, 34, 0.6);
+        }
+
+        /* --------------------------------------------------------------------
+           ULTRA-SMOOTH INVERTED BLUR OVERLAY (This hides standard flashes)
+           -------------------------------------------------------------------- */
+        .gridlabs-blur-overlay {
+            /* Full screen layer */
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; /* Sitting between tiles and UI */
+            pointer-events: none; /* Let users drag through the blur */
+            
+            /* The 'Mask' part: We cover the whole world but carve India out */
+            background-color: #f3f4f6; /* Gray-100 solid color outside */
+            opacity: 0.96; /* Very slight translucency */
+            
+            /* REAL-TIME, REALISTIC BLUR: Using backdrop-filter on the Gray layer */
+            -webkit-backdrop-filter: blur(12px) contrast(0.8) brightness(1.1);
+            backdrop-filter: blur(12px) contrast(0.8) brightness(1.1);
+            
+            /* This defines the SHAPE: Uses the SVG generated inside Leaflet */
+            -webkit-mask-image: url('#india-cutout-mask');
+            mask-image: url('#india-cutout-mask');
+            mask-size: cover;
+            mask-position: center;
         }
 
         input[type=range]::-webkit-slider-thumb {
@@ -40,9 +63,11 @@
 
     <div id="map"></div>
 
+    <div id="blur-layer" class="gridlabs-blur-overlay hidden"></div>
+
     <div id="radius-panel" class="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-100 hidden w-72 transition-all">
         <div class="flex justify-between items-center mb-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Scan Radius</label>
+            <label class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Search Radius</label>
             <span class="text-sm font-bold text-[#ff5722]"><span id="radius-display">1000</span>m</span>
         </div>
         <input type="range" id="radius-slider" min="100" max="5000" step="100" value="1000" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer outline-none">
@@ -56,32 +81,32 @@
     </button>
 
     <script>
-        const indiaBounds = [[6.55, 68.1], [35.7, 97.4]];
+        // High Viscosity Bounds (Solid limits)
+        const indiaBounds = [[6.0, 68.0], [36.0, 98.0]];
 
         const map = L.map('map', { 
             zoomControl: false,
             maxBounds: indiaBounds,
-            maxBoundsViscosity: 1.0,
+            maxBoundsViscosity: 1.0, // Ironclad drag boundary
             minZoom: 5,
-            // Create a custom pane for the mask to keep it on top of tiles
-            customPane: true 
+            preferCanvas: true // Required for smoother high-res vector masking
         }).setView([28.7105, 77.2130], 16);
 
-        // FIX: Added 'bounds' to TileLayer so it only fetches India tiles
+        // Base TileLayer (Crucially limited to India bounds to reduce flashing)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            bounds: indiaBounds 
+            bounds: L.latLngBounds(indiaBounds) 
         }).addTo(map);
 
-        // Load your High-Res GeoJSON from GitHub
+        // Load India composite detailed GeoJSON
         const geoUrl = 'https://raw.githubusercontent.com/datameet/maps/master/Country/india-composite.geojson';
 
         fetch(geoUrl) 
             .then(res => res.json())
             .then(data => {
-                const world = [[90, -180], [90, 180], [-90, 180], [-90, -180]];
                 const holes = [];
                 
+                // Geometry extract
                 data.features.forEach(f => {
                     const g = f.geometry;
                     if (g.type === "Polygon") holes.push(g.coordinates[0].map(c => [c[1], c[0]]));
@@ -90,15 +115,22 @@
                     }
                 });
 
-                L.polygon([world, ...holes], {
-                    color: '#ff5722',
-                    weight: 1,
-                    fillColor: '#f3f4f6', 
-                    fillOpacity: 1,
+                // Generate the Inverted Boundary Cutout Mask
+                // (Note: This is an un-filled polygon, used strictly for the SVG mask-image generation in the CSS)
+                L.polygon([[90, -180], [90, 180], [-90, 180], [-90, -180], ...holes], {
+                    color: '#ff5722', // GridLabs orange boundary border
+                    weight: 1.5,
+                    opacity: 1, // Visible border
+                    fillColor: 'black', // Used in generating the SVG cut-out
+                    fillOpacity: 0, // Keep standard fill invisible
                     interactive: false,
-                    // Use top-level zIndex via pane
-                    pane: 'overlayPane' 
+                    id: 'india-cutout-mask', // Assigning ID for CSS 'mask-image'
+                    pane: 'overlayPane' // Default pane (below the blur layer)
                 }).addTo(map);
+
+                // Now reveal the blur layer. Since India is now 'carved out', 
+                // the blur will cover everything *outside* the boundary.
+                document.getElementById('blur-layer').classList.remove('hidden');
             });
 
         // Room Markers
