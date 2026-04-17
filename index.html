@@ -21,6 +21,7 @@
             height: 100%;
             width: 100%;
             overflow: hidden;
+            background-color: #f3f4f6; /* Matching gray for the outside void */
         }
 
         #map {
@@ -29,13 +30,9 @@
             z-index: 1;
         }
         
-        .leaflet-popup-content-wrapper {
-            padding: 0;
-            overflow: hidden;
-        }
-        .leaflet-popup-content {
-            margin: 0;
-        }
+        /* Fix Leaflet popup padding to work perfectly with Tailwind */
+        .leaflet-popup-content-wrapper { padding: 0; overflow: hidden; }
+        .leaflet-popup-content { margin: 0; }
 
         /* Custom User Location Marker */
         .user-loc-marker {
@@ -58,9 +55,7 @@
             cursor: pointer;
             transition: transform 0.1s;
         }
-        input[type=range]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -82,13 +77,60 @@
     </button>
 
     <script>
-        const map = L.map('map', { zoomControl: true }).setView([28.7105, 77.2130], 16);
+        // ----------------------------------------------------
+        // 1. Initialize Map with India Bounds
+        // ----------------------------------------------------
+        const indiaBounds = [[6.5546, 68.1114], [35.6745, 97.3956]];
+
+        const map = L.map('map', { 
+            zoomControl: true,
+            maxBounds: indiaBounds,
+            maxBoundsViscosity: 1.0, // Prevents dragging outside bounds
+            minZoom: 5               // Prevents zooming out too far
+        }).setView([28.7105, 77.2130], 16);
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
 
+        // ----------------------------------------------------
+        // 2. High-Resolution Inverted Mask (India Boundary)
+        // ----------------------------------------------------
+        // Ensure 'india-detailed.geojson' is in the same directory as this file
+        fetch('./india-detailed.geojson') 
+            .then(response => response.json())
+            .then(data => {
+                const worldCoords = [
+                    [90, -180], [90, 180], [-90, 180], [-90, -180]
+                ];
+                
+                const holes = [];
+                
+                data.features.forEach(feature => {
+                    const geometry = feature.geometry;
+                    if (geometry.type === "Polygon") {
+                        holes.push(geometry.coordinates[0].map(c => [c[1], c[0]]));
+                    } else if (geometry.type === "MultiPolygon") {
+                        geometry.coordinates.forEach(poly => {
+                            holes.push(poly[0].map(c => [c[1], c[0]]));
+                        });
+                    }
+                });
+
+                L.polygon([worldCoords, ...holes], {
+                    color: '#6b7280',     
+                    weight: 2,
+                    fillColor: '#f3f4f6', 
+                    fillOpacity: 1,       
+                    interactive: false    
+                }).addTo(map);
+            })
+            .catch(err => console.error("Could not load local India boundaries. Did you download india-detailed.geojson?", err));
+
+        // ----------------------------------------------------
+        // 3. Static Room Data & Markers
+        // ----------------------------------------------------
         const rooms = [
             { coords: [28.7105, 77.2130], name: 'Elite PG Signature', price: '₹12,000' },
             { coords: [28.7112, 77.2125], name: 'UPSC Scholars Hub', price: '₹8,500' },
@@ -110,7 +152,7 @@
         });
 
         // ----------------------------------------------------
-        // LOCATE ME & RADIUS FEATURE
+        // 4. Locate Me & Interactive Radius Logic
         // ----------------------------------------------------
         let userMarker, userCircle;
         let userLocation = null;
@@ -118,31 +160,36 @@
         const slider = document.getElementById('radius-slider');
         const radiusDisplay = document.getElementById('radius-display');
         const radiusPanel = document.getElementById('radius-panel');
+        const locateBtn = document.getElementById('locate-btn');
 
-        // Trigger location search
-        document.getElementById('locate-btn').addEventListener('click', () => {
-            // Remove setView: true so we can handle the smooth flyTo manually
+        // Request location on click
+        locateBtn.addEventListener('click', () => {
             map.locate({ maxZoom: 16, enableHighAccuracy: true });
             
-            const btn = document.getElementById('locate-btn');
-            btn.classList.add('animate-pulse');
-            setTimeout(() => btn.classList.remove('animate-pulse'), 1500);
+            // Visual feedback on the button
+            locateBtn.classList.add('animate-pulse');
+            setTimeout(() => locateBtn.classList.remove('animate-pulse'), 1500);
         });
 
-        // When location is successfully found
+        // Handle successful location fetch
         map.on('locationfound', (e) => {
+            const latLngBounds = L.latLngBounds(indiaBounds);
+            if (!latLngBounds.contains(e.latlng)) {
+                alert("Your location seems to be outside the allowed map area (India).");
+                return;
+            }
+
             userLocation = e.latlng;
             const currentRadius = parseInt(slider.value);
 
-            // Smoothly fly to the user's location
-            map.flyTo(userLocation, 15, {
-                animate: true,
-                duration: 1.5 // seconds
-            });
+            // Smooth pan and zoom
+            map.flyTo(userLocation, 15, { animate: true, duration: 1.5 });
 
+            // Clear previous markers
             if (userMarker) map.removeLayer(userMarker);
             if (userCircle) map.removeLayer(userCircle);
 
+            // Create custom blue dot
             const userIcon = L.divIcon({
                 className: 'custom-icon',
                 html: '<div class="user-loc-marker"></div>',
@@ -154,20 +201,20 @@
             userMarker = L.marker(userLocation, { icon: userIcon }).addTo(map)
                 .bindPopup('<div class="p-2 font-semibold text-gray-800">You are here</div>').openPopup();
             
-            // Draw circle based on slider value instead of default accuracy
+            // Add radius circle
             userCircle = L.circle(userLocation, currentRadius, {
                 color: '#2563eb',
                 fillColor: '#2563eb',
                 fillOpacity: 0.1,
                 weight: 1.5,
-                dashArray: '5, 5' // Adds a nice dotted border to the radius
+                dashArray: '5, 5' 
             }).addTo(map);
 
-            // Reveal the radius control panel
+            // Show the radius slider UI
             radiusPanel.classList.remove('hidden');
         });
 
-        // Real-time Radius Update
+        // Real-time Radius Update via Slider
         slider.addEventListener('input', (e) => {
             const newRadius = parseInt(e.target.value);
             radiusDisplay.innerText = newRadius;
@@ -177,6 +224,7 @@
             }
         });
 
+        // Handle location errors
         map.on('locationerror', (e) => {
             console.warn("Location access denied or unavailable.");
             alert("Could not access your location. Please ensure location permissions are granted in your browser.");
