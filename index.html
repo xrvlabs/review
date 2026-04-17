@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GridLabs - Precision NCR Map</title>
+    <title>GridLabs - Stable NCR Map</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Quantico:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -11,14 +11,26 @@
     <style>
         * { font-family: 'Quantico', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
         body, html { height: 100%; width: 100%; background: #f3f4f6; overflow: hidden; }
-        #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; background: #f3f4f6; }
+        
+        #map { 
+            position: absolute; top: 0; left: 0; height: 100%; width: 100%; 
+            background: #f3f4f6; 
+            /* Smooth transition jab tiles load hon */
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        /* Map Tiles ko stable rakhne ke liye CSS hack */
+        .leaflet-tile-container {
+            will-change: transform;
+        }
+
         .user-loc-marker {
             background-color: #ff5722; width: 18px; height: 18px;
             border-radius: 50%; border: 3px solid white;
             box-shadow: 0 0 15px rgba(255, 87, 34, 0.6);
         }
+
         .leaflet-popup-content-wrapper { padding: 0; overflow: hidden; border-radius: 12px; }
-        .leaflet-popup-content { margin: 0; }
     </style>
 </head>
 <body>
@@ -33,57 +45,53 @@
     </button>
 
     <script>
-        const ncrBounds = [
-            [28.0000, 76.5000], 
-            [29.2000, 77.8000]  
-        ];
+        const ncrBounds = [[28.0000, 76.5000], [29.2000, 77.8000]];
 
-        // Map initialization bina fixed minZoom ke
         const map = L.map('map', { 
             zoomControl: true,
             maxBounds: ncrBounds,
             maxBoundsViscosity: 1.0, 
-            maxZoom: 19
+            maxZoom: 19,
+            // PERFORMANCE: Animation smooth rakhega
+            fadeAnimation: true,
+            markerZoomAnimation: true
         });
 
+        // --- STABLE TILE LOADING LOGIC ---
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             bounds: L.latLngBounds(ncrBounds),
-            noWrap: true
+            noWrap: true,
+            
+            // 1. updateWhenIdle: Drag karte waqt naye tiles fetch nahi karega, 
+            // sirf rukne par karega. Isse "flicker" khatam ho jata hai.
+            updateWhenIdle: true, 
+            
+            // 2. keepBuffer: Viewport ke bahar 10 rows/cols tak tiles ko memory mein rakhega.
+            // Isse jab aap drag karoge, toh tiles pehle se loaded milenge.
+            keepBuffer: 10, 
+            
+            // 3. updateWhenZooming: Zoom ke waqt render stop rakhega jab tak zoom finish na ho.
+            updateWhenZooming: false,
+            
+            // 4. Tile load hone ki frequency
+            updateInterval: 150
         }).addTo(map);
 
-        // --- SMART ZOOM LOGIC ---
         function updateMinZoom() {
-            // Ye function check karega ki screen par NCR ko fit karne ke liye 
-            // kitna zoom chahiye taaki side mein "gray area" na aaye.
             const minZoomNeeded = map.getBoundsZoom(ncrBounds, true); 
             map.setMinZoom(minZoomNeeded);
             map.setView([28.6139, 77.2090], minZoomNeeded);
         }
 
-        // Initial setup
         updateMinZoom();
 
-        // Agar user window resize kare (ya mobile rotate kare), toh zoom dobara set hoga
-        window.addEventListener('resize', () => {
-            updateMinZoom();
-            map.invalidateSize();
-        });
-
-        // Markers aur baaki features
+        // Markers
         const rooms = [
-            { coords: [28.7105, 77.2130], name: 'GridLabs - Mukherjee Nagar', price: '₹12,000' },
-            { coords: [28.5355, 77.3910], name: 'GridLabs - Noida Sec 62', price: '₹9,500' }
+            { coords: [28.7105, 77.2130], name: 'GridLabs - Mukherjee Nagar', price: '₹12,000' }
         ];
 
         rooms.forEach(r => {
-            L.marker(r.coords).addTo(map).bindPopup(`
-                <div class="p-4 min-w-[180px]">
-                    <h4 class="text-xs font-bold text-gray-400 uppercase">GridLabs NCR</h4>
-                    <div class="text-lg font-bold text-gray-800">${r.name}</div>
-                    <div class="text-xl font-bold text-[#ff5722] mt-1">${r.price}</div>
-                    <button class="mt-3 w-full py-2 bg-[#ff5722] text-white text-[10px] font-bold uppercase rounded-md">Details</button>
-                </div>
-            `);
+            L.marker(r.coords).addTo(map).bindPopup(`<div class="p-4"><b>${r.name}</b><br>${r.price}</div>`);
         });
 
         document.getElementById('locate-btn').onclick = () => {
@@ -96,9 +104,12 @@
                 L.marker(e.latlng, {
                     icon: L.divIcon({ className: 'custom-icon', html: '<div class="user-loc-marker"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
                 }).addTo(map);
-            } else {
-                alert("Aap Delhi NCR area ke bahar hain.");
             }
+        });
+
+        window.addEventListener('resize', () => {
+            updateMinZoom();
+            map.invalidateSize();
         });
     </script>
 </body>
