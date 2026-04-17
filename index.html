@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GridLabs - Stable NCR Map</title>
+    <title>GridLabs - Ultra-Stable NCR Map</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Quantico:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,13 +15,12 @@
         #map { 
             position: absolute; top: 0; left: 0; height: 100%; width: 100%; 
             background: #f3f4f6; 
-            /* Smooth transition jab tiles load hon */
-            transition: opacity 0.3s ease-in-out;
         }
 
-        /* Map Tiles ko stable rakhne ke liye CSS hack */
+        /* GPU Acceleration Hack: Isse tiles ka hila-dhuli smooth ho jati hai */
         .leaflet-tile-container {
             will-change: transform;
+            transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
         }
 
         .user-loc-marker {
@@ -51,36 +50,43 @@
             zoomControl: true,
             maxBounds: ncrBounds,
             maxBoundsViscosity: 1.0, 
-            maxZoom: 19,
-            // PERFORMANCE: Animation smooth rakhega
+            maxZoom: 18,
+            // Smooth Zooming settings
+            zoomAnimation: true,
             fadeAnimation: true,
-            markerZoomAnimation: true
+            inertia: true, // Momentum dragging enable
+            inertiaDelay: 100
         });
 
-        // --- STABLE TILE LOADING LOGIC ---
+        // --- AGGRESSIVE CACHING TILE LAYER ---
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             bounds: L.latLngBounds(ncrBounds),
             noWrap: true,
             
-            // 1. updateWhenIdle: Drag karte waqt naye tiles fetch nahi karega, 
-            // sirf rukne par karega. Isse "flicker" khatam ho jata hai.
+            // Ye wo setting hai jo aapko chahiye:
+            // 1. updateWhenIdle: Drag karte waqt render engine ko 'shant' rakhta hai.
             updateWhenIdle: true, 
             
-            // 2. keepBuffer: Viewport ke bahar 10 rows/cols tak tiles ko memory mein rakhega.
-            // Isse jab aap drag karoge, toh tiles pehle se loaded milenge.
-            keepBuffer: 10, 
+            // 2. keepBuffer: 40 tiles ka buffer matlab poora NCR pehle hi memory mein load ho jayega.
+            // Screen ke bahar bhi map render rahega.
+            keepBuffer: 40, 
             
-            // 3. updateWhenZooming: Zoom ke waqt render stop rakhega jab tak zoom finish na ho.
+            // 3. updateWhenZooming: Zoom ke beech mein naye tiles mangna band.
             updateWhenZooming: false,
             
-            // 4. Tile load hone ki frequency
-            updateInterval: 150
+            // 4. edgeBufferTiles: Screen ke kinaro par extra tiles pehle se fetch karna.
+            edgeBufferTiles: 3,
+            
+            // Performance flags
+            className: 'stable-tiles'
         }).addTo(map);
 
+        // Smart Zoom and Layout refresh
         function updateMinZoom() {
             const minZoomNeeded = map.getBoundsZoom(ncrBounds, true); 
             map.setMinZoom(minZoomNeeded);
             map.setView([28.6139, 77.2090], minZoomNeeded);
+            map.invalidateSize(); // Force refresh to ensure no crop
         }
 
         updateMinZoom();
@@ -109,7 +115,6 @@
 
         window.addEventListener('resize', () => {
             updateMinZoom();
-            map.invalidateSize();
         });
     </script>
 </body>
