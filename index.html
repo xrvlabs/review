@@ -3,232 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RoomFinder Map - Mukherjee Nagar</title>
+    <title>GridLabs - India Precision</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quantico:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Quantico', sans-serif; }
         
-        * {
-            font-family: 'Poppins', sans-serif;
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* FIX: Set background color to match the mask to prevent 'flashes' */
+        #map { 
+            height: 100vh; 
+            width: 100%; 
+            background: #f3f4f6; /* Gray-100 to match the mask */
         }
 
-        body, html {
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-            background-color: #f3f4f6; /* Matching gray for the outside void */
-        }
-
-        #map {
-            height: 100vh;
-            width: 100%;
-            z-index: 1;
-        }
-        
-        /* Fix Leaflet popup padding to work perfectly with Tailwind */
-        .leaflet-popup-content-wrapper { padding: 0; overflow: hidden; }
+        .leaflet-popup-content-wrapper { padding: 0; overflow: hidden; border-radius: 12px; }
         .leaflet-popup-content { margin: 0; }
 
-        /* Custom User Location Marker */
         .user-loc-marker {
-            background-color: #2563eb; 
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.4);
+            background-color: #ff5722; 
+            width: 18px; height: 18px;
+            border-radius: 50%; border: 3px solid white;
+            box-shadow: 0 0 15px rgba(255, 87, 34, 0.5);
         }
 
-        /* Custom Range Slider Thumb */
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            background: #2563eb;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: transform 0.1s;
+            -webkit-appearance: none; appearance: none;
+            width: 20px; height: 20px;
+            background: #ff5722; border-radius: 50%;
+            cursor: pointer; border: 2px solid white;
         }
-        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
     </style>
 </head>
-<body>
+<body class="bg-[#f3f4f6] overflow-hidden">
 
     <div id="map"></div>
 
-    <div id="radius-panel" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[1000] bg-white px-6 py-4 rounded-2xl shadow-xl border border-gray-100 hidden w-80 transition-all duration-300">
+    <div id="radius-panel" class="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-100 hidden w-72 transition-all">
         <div class="flex justify-between items-center mb-2">
-            <label class="text-sm font-semibold text-gray-700">Search Area Radius</label>
-            <span class="text-sm font-bold text-blue-600"><span id="radius-display">1000</span> m</span>
+            <label class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Scan Radius</label>
+            <span class="text-sm font-bold text-[#ff5722]"><span id="radius-display">1000</span>m</span>
         </div>
-        <input type="range" id="radius-slider" min="100" max="5000" step="100" value="1000" class="w-full h-2 bg-blue-100 rounded-lg appearance-none cursor-pointer outline-none">
+        <input type="range" id="radius-slider" min="100" max="5000" step="100" value="1000" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer outline-none">
     </div>
 
-    <button id="locate-btn" class="absolute bottom-8 right-8 z-[1000] bg-white p-4 rounded-full shadow-xl border border-gray-100 hover:bg-blue-50 focus:outline-none transition-all duration-300 group" title="Find My Location">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-blue-600 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+    <button id="locate-btn" class="absolute bottom-8 right-8 z-[1000] bg-white p-4 rounded-full shadow-2xl hover:bg-orange-50 active:scale-90 transition-all group">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#ff5722]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
     </button>
 
     <script>
-        // ----------------------------------------------------
-        // 1. Initialize Map with India Bounds
-        // ----------------------------------------------------
-        const indiaBounds = [[6.5546, 68.1114], [35.6745, 97.3956]];
+        const indiaBounds = [[6.55, 68.1], [35.7, 97.4]];
 
         const map = L.map('map', { 
-            zoomControl: true,
+            zoomControl: false,
             maxBounds: indiaBounds,
-            maxBoundsViscosity: 1.0, // Prevents dragging outside bounds
-            minZoom: 5               // Prevents zooming out too far
+            maxBoundsViscosity: 1.0,
+            minZoom: 5,
+            // Create a custom pane for the mask to keep it on top of tiles
+            customPane: true 
         }).setView([28.7105, 77.2130], 16);
-        
+
+        // FIX: Added 'bounds' to TileLayer so it only fetches India tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
+            maxZoom: 19,
+            bounds: indiaBounds 
         }).addTo(map);
 
-        // ----------------------------------------------------
-        // 2. High-Resolution Inverted Mask (India Boundary)
-        // ----------------------------------------------------
-        // Ensure 'india-detailed.geojson' is in the same directory as this file
-        fetch('./india-detailed.geojson') 
-            .then(response => response.json())
+        // Load your High-Res GeoJSON from GitHub
+        const geoUrl = 'https://raw.githubusercontent.com/datameet/maps/master/Country/india-composite.geojson';
+
+        fetch(geoUrl) 
+            .then(res => res.json())
             .then(data => {
-                const worldCoords = [
-                    [90, -180], [90, 180], [-90, 180], [-90, -180]
-                ];
-                
+                const world = [[90, -180], [90, 180], [-90, 180], [-90, -180]];
                 const holes = [];
                 
-                data.features.forEach(feature => {
-                    const geometry = feature.geometry;
-                    if (geometry.type === "Polygon") {
-                        holes.push(geometry.coordinates[0].map(c => [c[1], c[0]]));
-                    } else if (geometry.type === "MultiPolygon") {
-                        geometry.coordinates.forEach(poly => {
-                            holes.push(poly[0].map(c => [c[1], c[0]]));
-                        });
+                data.features.forEach(f => {
+                    const g = f.geometry;
+                    if (g.type === "Polygon") holes.push(g.coordinates[0].map(c => [c[1], c[0]]));
+                    else if (g.type === "MultiPolygon") {
+                        g.coordinates.forEach(p => holes.push(p[0].map(c => [c[1], c[0]])));
                     }
                 });
 
-                L.polygon([worldCoords, ...holes], {
-                    color: '#6b7280',     
-                    weight: 2,
+                L.polygon([world, ...holes], {
+                    color: '#ff5722',
+                    weight: 1,
                     fillColor: '#f3f4f6', 
-                    fillOpacity: 1,       
-                    interactive: false    
+                    fillOpacity: 1,
+                    interactive: false,
+                    // Use top-level zIndex via pane
+                    pane: 'overlayPane' 
                 }).addTo(map);
-            })
-            .catch(err => console.error("Could not load local India boundaries. Did you download india-detailed.geojson?", err));
+            });
 
-        // ----------------------------------------------------
-        // 3. Static Room Data & Markers
-        // ----------------------------------------------------
+        // Room Markers
         const rooms = [
-            { coords: [28.7105, 77.2130], name: 'Elite PG Signature', price: '₹12,000' },
-            { coords: [28.7112, 77.2125], name: 'UPSC Scholars Hub', price: '₹8,500' },
-            { coords: [28.7098, 77.2135], name: 'Prime UPSC Hostel', price: '₹6,500' },
-            { coords: [28.7120, 77.2140], name: 'Study Zone PG', price: '₹10,500' }
+            { coords: [28.7105, 77.2130], name: 'GridLabs Premium PG', price: '₹12,000' },
+            { coords: [28.7112, 77.2125], name: 'UPSC Elite Hub', price: '₹8,500' }
         ];
 
-        rooms.forEach((room) => {
-            const marker = L.marker(room.coords).addTo(map);
-            marker.bindPopup(`
-                <div class="p-5 min-w-[220px]">
-                    <h4 class="font-bold text-lg mb-1 text-gray-800">${room.name}</h4>
-                    <div class="text-2xl font-bold text-purple-600 mb-4">${room.price}</div>
-                    <button class="bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold px-4 py-2 rounded-xl hover:from-purple-700 hover:to-blue-700 w-full transition-all duration-300 shadow-md">
-                        View Details
-                    </button>
+        rooms.forEach(r => {
+            L.marker(r.coords).addTo(map).bindPopup(`
+                <div class="p-4 min-w-[180px]">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-tighter">Verified Room</h4>
+                    <div class="text-lg font-bold text-gray-800">${r.name}</div>
+                    <div class="text-xl font-bold text-[#ff5722] mt-1">${r.price}</div>
+                    <button class="mt-3 w-full py-2 bg-[#ff5722] text-white text-[10px] font-bold uppercase rounded-md tracking-widest">Reserve</button>
                 </div>
             `);
         });
 
-        // ----------------------------------------------------
-        // 4. Locate Me & Interactive Radius Logic
-        // ----------------------------------------------------
-        let userMarker, userCircle;
-        let userLocation = null;
-
+        // Locate Logic
+        let uMarker, uCircle;
         const slider = document.getElementById('radius-slider');
-        const radiusDisplay = document.getElementById('radius-display');
-        const radiusPanel = document.getElementById('radius-panel');
-        const locateBtn = document.getElementById('locate-btn');
+        const display = document.getElementById('radius-display');
+        const panel = document.getElementById('radius-panel');
 
-        // Request location on click
-        locateBtn.addEventListener('click', () => {
-            map.locate({ maxZoom: 16, enableHighAccuracy: true });
-            
-            // Visual feedback on the button
-            locateBtn.classList.add('animate-pulse');
-            setTimeout(() => locateBtn.classList.remove('animate-pulse'), 1500);
-        });
+        document.getElementById('locate-btn').onclick = () => {
+            map.locate({ enableHighAccuracy: true });
+        };
 
-        // Handle successful location fetch
         map.on('locationfound', (e) => {
-            const latLngBounds = L.latLngBounds(indiaBounds);
-            if (!latLngBounds.contains(e.latlng)) {
-                alert("Your location seems to be outside the allowed map area (India).");
-                return;
-            }
+            map.flyTo(e.latlng, 15, { duration: 1.5 });
+            if (uMarker) map.removeLayer(uMarker);
+            if (uCircle) map.removeLayer(uCircle);
 
-            userLocation = e.latlng;
-            const currentRadius = parseInt(slider.value);
-
-            // Smooth pan and zoom
-            map.flyTo(userLocation, 15, { animate: true, duration: 1.5 });
-
-            // Clear previous markers
-            if (userMarker) map.removeLayer(userMarker);
-            if (userCircle) map.removeLayer(userCircle);
-
-            // Create custom blue dot
-            const userIcon = L.divIcon({
-                className: 'custom-icon',
-                html: '<div class="user-loc-marker"></div>',
-                iconSize: [18, 18],
-                iconAnchor: [9, 9]
-            });
-
-            // Add marker
-            userMarker = L.marker(userLocation, { icon: userIcon }).addTo(map)
-                .bindPopup('<div class="p-2 font-semibold text-gray-800">You are here</div>').openPopup();
+            uMarker = L.marker(e.latlng, {
+                icon: L.divIcon({ className: 'custom-icon', html: '<div class="user-loc-marker"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
+            }).addTo(map);
             
-            // Add radius circle
-            userCircle = L.circle(userLocation, currentRadius, {
-                color: '#2563eb',
-                fillColor: '#2563eb',
-                fillOpacity: 0.1,
-                weight: 1.5,
-                dashArray: '5, 5' 
+            uCircle = L.circle(e.latlng, parseInt(slider.value), {
+                color: '#ff5722', fillColor: '#ff5722', fillOpacity: 0.1, weight: 1, dashArray: '5, 10'
             }).addTo(map);
 
-            // Show the radius slider UI
-            radiusPanel.classList.remove('hidden');
+            panel.classList.remove('hidden');
         });
 
-        // Real-time Radius Update via Slider
-        slider.addEventListener('input', (e) => {
-            const newRadius = parseInt(e.target.value);
-            radiusDisplay.innerText = newRadius;
-            
-            if (userCircle && userLocation) {
-                userCircle.setRadius(newRadius);
-            }
-        });
-
-        // Handle location errors
-        map.on('locationerror', (e) => {
-            console.warn("Location access denied or unavailable.");
-            alert("Could not access your location. Please ensure location permissions are granted in your browser.");
-        });
+        slider.oninput = (e) => {
+            const v = parseInt(e.target.value);
+            display.innerText = v;
+            if (uCircle) uCircle.setRadius(v);
+        };
     </script>
 </body>
 </html>
