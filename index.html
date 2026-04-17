@@ -3,49 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GridLabs - Basic Map</title>
+    <title>RoomFinder Map - Mukherjee Nagar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --accent: #ff5722; --bg: #ffffff; --text: #202124; }
-        body.dark-mode { --bg: #1a1b1e; --text: #e8eaed; }
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
         
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body, html { height: 100%; width: 100%; background: var(--bg); overflow: hidden; }
+        * {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-        #map { height: 100vh; width: 100%; z-index: 1; background: #f0f0f0; }
+        body, html {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
 
-        /* Control Buttons */
-        .controls { 
-            position: absolute; 
-            bottom: 30px; 
-            left: 15px; 
-            z-index: 1000; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px; 
+        #map {
+            height: 100vh;
+            width: 100%;
+            z-index: 1;
         }
         
-        .btn { 
-            width: 45px; 
-            height: 45px; 
-            border-radius: 50%; 
-            border: none; 
-            background: var(--accent);
-            color: white; 
-            font-size: 20px; 
-            cursor: pointer; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s;
+        .leaflet-popup-content-wrapper {
+            padding: 0;
+            overflow: hidden;
         }
-        
-        .btn:hover { transform: scale(1.05); }
+        .leaflet-popup-content {
+            margin: 0;
+        }
 
-        .loc-icon { 
-            font-size: 24px; 
-            filter: drop-shadow(0 0 5px rgba(0,0,0,0.3)); 
+        /* Custom User Location Marker */
+        .user-loc-marker {
+            background-color: #2563eb; 
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.4);
+        }
+
+        /* Custom Range Slider Thumb */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #2563eb;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
         }
     </style>
 </head>
@@ -53,66 +67,120 @@
 
     <div id="map"></div>
 
-    <div class="controls">
-        <button class="btn" id="l-btn" title="Find My Location">🎯</button>
-        <button class="btn" id="theme-btn" title="Toggle Dark Mode">🌓</button>
+    <div id="radius-panel" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[1000] bg-white px-6 py-4 rounded-2xl shadow-xl border border-gray-100 hidden w-80 transition-all duration-300">
+        <div class="flex justify-between items-center mb-2">
+            <label class="text-sm font-semibold text-gray-700">Search Area Radius</label>
+            <span class="text-sm font-bold text-blue-600"><span id="radius-display">1000</span> m</span>
+        </div>
+        <input type="range" id="radius-slider" min="100" max="5000" step="100" value="1000" class="w-full h-2 bg-blue-100 rounded-lg appearance-none cursor-pointer outline-none">
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <button id="locate-btn" class="absolute bottom-8 right-8 z-[1000] bg-white p-4 rounded-full shadow-xl border border-gray-100 hover:bg-blue-50 focus:outline-none transition-all duration-300 group" title="Find My Location">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-blue-600 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+        </svg>
+    </button>
+
     <script>
-        // Initialize Map
-        const map = L.map('map', { zoomControl: false, maxZoom: 19 }).setView([28.6139, 77.2090], 15);
+        const map = L.map('map', { zoomControl: true }).setView([28.7105, 77.2130], 16);
         
-        // Add Tile Layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
 
-        let userMarker;
+        const rooms = [
+            { coords: [28.7105, 77.2130], name: 'Elite PG Signature', price: '₹12,000' },
+            { coords: [28.7112, 77.2125], name: 'UPSC Scholars Hub', price: '₹8,500' },
+            { coords: [28.7098, 77.2135], name: 'Prime UPSC Hostel', price: '₹6,500' },
+            { coords: [28.7120, 77.2140], name: 'Study Zone PG', price: '₹10,500' }
+        ];
 
-        // Set Marker at User's Location
-        function setLocation(lat, lng) {
-            if (userMarker) map.removeLayer(userMarker);
-
-            const icon = L.divIcon({ 
-                className: 'loc-icon', 
-                html: '📍', 
-                iconSize: [30, 30], 
-                iconAnchor: [15, 30] 
-            });
-            
-            userMarker = L.marker([lat, lng], { icon }).addTo(map);
-        }
-
-        // When Location is Found
-        map.on('locationfound', (e) => {
-            setLocation(e.latlng.lat, e.latlng.lng);
-            map.flyTo(e.latlng, 17);
+        rooms.forEach((room) => {
+            const marker = L.marker(room.coords).addTo(map);
+            marker.bindPopup(`
+                <div class="p-5 min-w-[220px]">
+                    <h4 class="font-bold text-lg mb-1 text-gray-800">${room.name}</h4>
+                    <div class="text-2xl font-bold text-purple-600 mb-4">${room.price}</div>
+                    <button class="bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold px-4 py-2 rounded-xl hover:from-purple-700 hover:to-blue-700 w-full transition-all duration-300 shadow-md">
+                        View Details
+                    </button>
+                </div>
+            `);
         });
 
-        // Error Handling for Location
+        // ----------------------------------------------------
+        // LOCATE ME & RADIUS FEATURE
+        // ----------------------------------------------------
+        let userMarker, userCircle;
+        let userLocation = null;
+
+        const slider = document.getElementById('radius-slider');
+        const radiusDisplay = document.getElementById('radius-display');
+        const radiusPanel = document.getElementById('radius-panel');
+
+        // Trigger location search
+        document.getElementById('locate-btn').addEventListener('click', () => {
+            // Remove setView: true so we can handle the smooth flyTo manually
+            map.locate({ maxZoom: 16, enableHighAccuracy: true });
+            
+            const btn = document.getElementById('locate-btn');
+            btn.classList.add('animate-pulse');
+            setTimeout(() => btn.classList.remove('animate-pulse'), 1500);
+        });
+
+        // When location is successfully found
+        map.on('locationfound', (e) => {
+            userLocation = e.latlng;
+            const currentRadius = parseInt(slider.value);
+
+            // Smoothly fly to the user's location
+            map.flyTo(userLocation, 15, {
+                animate: true,
+                duration: 1.5 // seconds
+            });
+
+            if (userMarker) map.removeLayer(userMarker);
+            if (userCircle) map.removeLayer(userCircle);
+
+            const userIcon = L.divIcon({
+                className: 'custom-icon',
+                html: '<div class="user-loc-marker"></div>',
+                iconSize: [18, 18],
+                iconAnchor: [9, 9]
+            });
+
+            // Add marker
+            userMarker = L.marker(userLocation, { icon: userIcon }).addTo(map)
+                .bindPopup('<div class="p-2 font-semibold text-gray-800">You are here</div>').openPopup();
+            
+            // Draw circle based on slider value instead of default accuracy
+            userCircle = L.circle(userLocation, currentRadius, {
+                color: '#2563eb',
+                fillColor: '#2563eb',
+                fillOpacity: 0.1,
+                weight: 1.5,
+                dashArray: '5, 5' // Adds a nice dotted border to the radius
+            }).addTo(map);
+
+            // Reveal the radius control panel
+            radiusPanel.classList.remove('hidden');
+        });
+
+        // Real-time Radius Update
+        slider.addEventListener('input', (e) => {
+            const newRadius = parseInt(e.target.value);
+            radiusDisplay.innerText = newRadius;
+            
+            if (userCircle && userLocation) {
+                userCircle.setRadius(newRadius);
+            }
+        });
+
         map.on('locationerror', (e) => {
             console.warn("Location access denied or unavailable.");
-            alert("Could not get your location. Please check browser permissions.");
+            alert("Could not access your location. Please ensure location permissions are granted in your browser.");
         });
-
-        // High Accuracy Locate Function
-        function startLocating() {
-            map.locate({ 
-                setView: true, 
-                maxZoom: 17, 
-                enableHighAccuracy: true, 
-                timeout: 10000 
-            });
-        }
-
-        // Auto-start locating on load
-        startLocating();
-        
-        // Button Event Listeners
-        document.getElementById('l-btn').onclick = startLocating;
-        
-        document.getElementById('theme-btn').onclick = () => {
-            document.body.classList.toggle('dark-mode');
-        };
     </script>
 </body>
 </html>
