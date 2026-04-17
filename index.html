@@ -3,38 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GridLabs - Delhi NCR Street View</title>
+    <title>GridLabs - Precision NCR Map</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Quantico:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         * { font-family: 'Quantico', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
-        
-        /* Body aur Map ko absolute position par set kiya taaki width 100% lock rahe */
-        body, html { height: 100%; width: 100%; background: #f3f4f6; overflow: hidden; position: relative; }
-
-        #map { 
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%; 
-            width: 100%; 
-            background: #f3f4f6; 
-        }
-
+        body, html { height: 100%; width: 100%; background: #f3f4f6; overflow: hidden; }
+        #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; background: #f3f4f6; }
         .user-loc-marker {
-            background-color: #ff5722; 
-            width: 18px; height: 18px;
+            background-color: #ff5722; width: 18px; height: 18px;
             border-radius: 50%; border: 3px solid white;
             box-shadow: 0 0 15px rgba(255, 87, 34, 0.6);
         }
-
         .leaflet-popup-content-wrapper { padding: 0; overflow: hidden; border-radius: 12px; }
         .leaflet-popup-content { margin: 0; }
-        
-        .leaflet-bar a { background-color: #fff !important; color: #ff5722 !important; }
-        .leaflet-bar a:hover { background-color: #ff5722 !important; color: #fff !important; }
     </style>
 </head>
 <body>
@@ -49,30 +33,43 @@
     </button>
 
     <script>
-        // Bounds ko thoda expand kiya hai side cropping se bachne ke liye
         const ncrBounds = [
             [28.0000, 76.5000], 
             [29.2000, 77.8000]  
         ];
 
+        // Map initialization bina fixed minZoom ke
         const map = L.map('map', { 
             zoomControl: true,
             maxBounds: ncrBounds,
-            maxBoundsViscosity: 0.8, // Ise 1.0 se kam kiya taaki edges par map ekdum se ruk na jaye
-            minZoom: 10,             // Zoom out thoda zyada allow kiya taaki screen fill ho sake
+            maxBoundsViscosity: 1.0, 
             maxZoom: 19
-        }).setView([28.6139, 77.2090], 11);
+        });
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             bounds: L.latLngBounds(ncrBounds),
             noWrap: true
         }).addTo(map);
 
-        // Rendering Fix: Map ko refresh karne ke liye
-        setTimeout(() => {
-            map.invalidateSize();
-        }, 100);
+        // --- SMART ZOOM LOGIC ---
+        function updateMinZoom() {
+            // Ye function check karega ki screen par NCR ko fit karne ke liye 
+            // kitna zoom chahiye taaki side mein "gray area" na aaye.
+            const minZoomNeeded = map.getBoundsZoom(ncrBounds, true); 
+            map.setMinZoom(minZoomNeeded);
+            map.setView([28.6139, 77.2090], minZoomNeeded);
+        }
 
+        // Initial setup
+        updateMinZoom();
+
+        // Agar user window resize kare (ya mobile rotate kare), toh zoom dobara set hoga
+        window.addEventListener('resize', () => {
+            updateMinZoom();
+            map.invalidateSize();
+        });
+
+        // Markers aur baaki features
         const rooms = [
             { coords: [28.7105, 77.2130], name: 'GridLabs - Mukherjee Nagar', price: '₹12,000' },
             { coords: [28.5355, 77.3910], name: 'GridLabs - Noida Sec 62', price: '₹9,500' }
@@ -102,11 +99,6 @@
             } else {
                 alert("Aap Delhi NCR area ke bahar hain.");
             }
-        });
-
-        // Window resize hone par map size khud theek kare
-        window.addEventListener('resize', () => {
-            map.invalidateSize();
         });
     </script>
 </body>
