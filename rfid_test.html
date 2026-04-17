@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Attendance Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #28a745;
+            color: white;
+        }
+        .login { color: green; font-weight: bold; }
+        .logout { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📡 Real-time Attendance Dashboard</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Card UID</th>
+                <th>Status</th>
+                <th>System Ticks (Time)</th>
+            </tr>
+        </thead>
+        <tbody id="attendance-data">
+            <tr><td colspan="4" style="text-align:center;">Loading data from Firebase...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-database.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyDCPkXcx3p7_2dy_C-mHPGvQaVklnnOazo",
+        authDomain: "demorfid-c1f7c.firebaseapp.com",
+        databaseURL: "https://demorfid-c1f7c-default-rtdb.firebaseio.com",
+        projectId: "demorfid-c1f7c",
+        storageBucket: "demorfid-c1f7c.firebasestorage.app",
+        messagingSenderId: "1041900133243",
+        appId: "1:1041900133243:web:3f29a0672ff24b5fe03bde"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    
+    // Reference to 'attendance' node in database
+    const attendanceRef = ref(db, 'attendance');
+
+    // Realtime Listener
+    onValue(attendanceRef, (snapshot) => {
+        const data = snapshot.val();
+        const tbody = document.getElementById('attendance-data');
+        tbody.innerHTML = ''; // Clear old data
+
+        if (data) {
+            // Firebase pushes data with unique IDs. Extract values into an array.
+            const records = Object.values(data);
+            
+            // Reverse loop taaki naya entry sabse upar dikhe
+            records.reverse().forEach(record => {
+                const tr = document.createElement('tr');
+                const statusClass = record.status === "Login" ? "login" : "logout";
+                
+                tr.innerHTML = `
+                    <td>${record.name || 'Unknown'}</td>
+                    <td>${record.uid || 'N/A'}</td>
+                    <td class="${statusClass}">${record.status || 'N/A'}</td>
+                    <td>${record.timestamp || 'N/A'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No records found yet. Scan a card!</td></tr>';
+        }
+    });
+</script>
+
+</body>
+</html>
