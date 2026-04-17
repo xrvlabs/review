@@ -9,12 +9,16 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        * { font-family: 'Quantico', sans-serif; }
+        * { font-family: 'Quantico', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
         
-        body, html { margin: 0; padding: 0; height: 100%; background: #f3f4f6; overflow: hidden; }
+        /* Body aur Map ko absolute position par set kiya taaki width 100% lock rahe */
+        body, html { height: 100%; width: 100%; background: #f3f4f6; overflow: hidden; position: relative; }
 
         #map { 
-            height: 100vh; 
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%; 
             width: 100%; 
             background: #f3f4f6; 
         }
@@ -29,8 +33,7 @@
         .leaflet-popup-content-wrapper { padding: 0; overflow: hidden; border-radius: 12px; }
         .leaflet-popup-content { margin: 0; }
         
-        /* Zoom Control Styling */
-        .leaflet-bar a { background-color: #fff !important; color: #ff5722 !important; border-bottom: 1px solid #eee !important; }
+        .leaflet-bar a { background-color: #fff !important; color: #ff5722 !important; }
         .leaflet-bar a:hover { background-color: #ff5722 !important; color: #fff !important; }
     </style>
 </head>
@@ -46,22 +49,18 @@
     </button>
 
     <script>
-        // 1. Delhi NCR Bounds
+        // Bounds ko thoda expand kiya hai side cropping se bachne ke liye
         const ncrBounds = [
-            [28.2045, 76.6745], 
-            [28.9845, 77.5645]  
+            [28.0000, 76.5000], 
+            [29.2000, 77.8000]  
         ];
 
-        // 2. Map Configuration
         const map = L.map('map', { 
-            zoomControl: true,         // Zoom buttons enable rakhe hain
-            scrollWheelZoom: true,      // Mouse se zoom enable
-            doubleClickZoom: true,      // Double click se zoom enable
-            touchZoom: true,            // Touch/Pinch zoom enable
-            maxBounds: ncrBounds,       // Area restriction
-            maxBoundsViscosity: 1.0,    // Lock strictly inside NCR
-            minZoom: 11,                // Isse zyada zoom out nahi hoga (NCR bird-eye view)
-            maxZoom: 19                 // Street level detail tak zoom in hoga
+            zoomControl: true,
+            maxBounds: ncrBounds,
+            maxBoundsViscosity: 0.8, // Ise 1.0 se kam kiya taaki edges par map ekdum se ruk na jaye
+            minZoom: 10,             // Zoom out thoda zyada allow kiya taaki screen fill ho sake
+            maxZoom: 19
         }).setView([28.6139, 77.2090], 11);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -69,7 +68,11 @@
             noWrap: true
         }).addTo(map);
 
-        // 3. Markers
+        // Rendering Fix: Map ko refresh karne ke liye
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+
         const rooms = [
             { coords: [28.7105, 77.2130], name: 'GridLabs - Mukherjee Nagar', price: '₹12,000' },
             { coords: [28.5355, 77.3910], name: 'GridLabs - Noida Sec 62', price: '₹9,500' }
@@ -86,22 +89,24 @@
             `);
         });
 
-        // 4. Locate Logic (Smooth Zoom In to current position)
         document.getElementById('locate-btn').onclick = () => {
             map.locate({ enableHighAccuracy: true });
         };
 
         map.on('locationfound', (e) => {
             if (L.latLngBounds(ncrBounds).contains(e.latlng)) {
-                // Location milne par street level zoom (16) par fly karega
                 map.flyTo(e.latlng, 16, { animate: true, duration: 1.5 }); 
-                
                 L.marker(e.latlng, {
                     icon: L.divIcon({ className: 'custom-icon', html: '<div class="user-loc-marker"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
                 }).addTo(map);
             } else {
                 alert("Aap Delhi NCR area ke bahar hain.");
             }
+        });
+
+        // Window resize hone par map size khud theek kare
+        window.addEventListener('resize', () => {
+            map.invalidateSize();
         });
     </script>
 </body>
