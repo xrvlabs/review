@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GridLabs - Mukherjee Nagar Fit</title>
+    <title>GridLabs - Mukherjee Nagar Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Quantico:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -11,14 +11,13 @@
     <style>
         * { font-family: 'Quantico', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
         body, html { height: 100%; width: 100%; background: #f3f4f6; overflow: hidden; }
-        #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; background: #f3f4f6; }
+        #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; background: #cbd5e1; }
         
         .user-loc-marker {
             background-color: #ff5722; width: 18px; height: 18px;
             border-radius: 50%; border: 3px solid white;
             box-shadow: 0 0 15px rgba(255, 87, 34, 0.6);
         }
-        .leaflet-popup-content-wrapper { border-radius: 12px; }
     </style>
 </head>
 <body>
@@ -33,51 +32,42 @@
     </button>
 
     <script>
-        // Mukherjee Nagar Tight Bounds
+        // Mukherjee Nagar Bounds (Slightly relaxed to prevent white tiles at edges)
         const mukhBounds = [
-            [28.7050, 77.2050], 
-            [28.7180, 77.2250]  
+            [28.7000, 77.2000], 
+            [28.7250, 77.2300]  
         ];
 
         const map = L.map('map', { 
             zoomControl: true,
             maxBounds: mukhBounds,
-            maxBoundsViscosity: 1.0, 
-            maxZoom: 19
+            maxBoundsViscosity: 1.0,
+            maxZoom: 18, // OSM limit par set kiya
+            minZoom: 10
         });
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            maxNativeZoom: 19, // Ye important hai: 19 tak ke tiles agar honge toh dikhayega, warna 18 ko upscale karega
             bounds: L.latLngBounds(mukhBounds),
             noWrap: true,
-            keepBuffer: 20,
-            updateWhenIdle: true
+            // Caching ko thoda normal rakhte hain white screen avoid karne ke liye
+            keepBuffer: 2, 
+            updateWhenIdle: false // Isse zoom karte hi tiles load honge, wait nahi karega
         }).addTo(map);
 
-        // --- DYNAMIC MIN ZOOM LOGIC ---
-        function fixZoomAndBounds() {
-            // 'inside: true' ensures the map fills the container with the bounds area
-            // and won't show any empty gaps on the sides.
+        function fixZoom() {
             const safeMinZoom = map.getBoundsZoom(mukhBounds, true); 
             map.setMinZoom(safeMinZoom);
-            
-            // Initial view set to Mukherjee Nagar center
             map.setView([28.7105, 77.2130], safeMinZoom);
+            // Render fix
+            map.invalidateSize();
         }
 
-        // Run on load
-        fixZoomAndBounds();
-
-        // Fix on resize (e.g. mobile rotation)
-        window.addEventListener('resize', () => {
-            fixZoomAndBounds();
-            map.invalidateSize();
-        });
+        fixZoom();
 
         // Markers
-        const rooms = [
-            { coords: [28.7105, 77.2130], name: 'GridLabs - Mukherjee Nagar', price: '₹12,000' }
-        ];
-
+        const rooms = [{ coords: [28.7105, 77.2130], name: 'GridLabs - Mukherjee Nagar', price: '₹12,000' }];
         rooms.forEach(r => {
             L.marker(r.coords).addTo(map).bindPopup(`<b>${r.name}</b><br>${r.price}`);
         });
@@ -92,9 +82,16 @@
                 L.marker(e.latlng, {
                     icon: L.divIcon({ className: 'custom-icon', html: '<div class="user-loc-marker"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
                 }).addTo(map);
-            } else {
-                alert("Aap Mukherjee Nagar area ke bahar hain.");
             }
+        });
+
+        // Event listener to fix rendering issues after zoom
+        map.on('zoomend', function() {
+            map.invalidateSize();
+        });
+
+        window.addEventListener('resize', () => {
+            fixZoom();
         });
     </script>
 </body>
