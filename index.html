@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GridLabs - Ultra-Stable NCR Map</title>
+    <title>GridLabs - Mukherjee Nagar Fit</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Quantico:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -11,32 +11,21 @@
     <style>
         * { font-family: 'Quantico', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
         body, html { height: 100%; width: 100%; background: #f3f4f6; overflow: hidden; }
+        #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; background: #f3f4f6; }
         
-        #map { 
-            position: absolute; top: 0; left: 0; height: 100%; width: 100%; 
-            background: #f3f4f6; 
-        }
-
-        /* GPU Acceleration Hack: Isse tiles ka hila-dhuli smooth ho jati hai */
-        .leaflet-tile-container {
-            will-change: transform;
-            transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
-        }
-
         .user-loc-marker {
             background-color: #ff5722; width: 18px; height: 18px;
             border-radius: 50%; border: 3px solid white;
             box-shadow: 0 0 15px rgba(255, 87, 34, 0.6);
         }
-
-        .leaflet-popup-content-wrapper { padding: 0; overflow: hidden; border-radius: 12px; }
+        .leaflet-popup-content-wrapper { border-radius: 12px; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
 
-    <button id="locate-btn" class="absolute bottom-8 right-8 z-[1000] bg-white p-4 rounded-full shadow-2xl hover:bg-orange-50 active:scale-90 transition-all group">
+    <button id="locate-btn" class="absolute bottom-8 right-8 z-[1000] bg-white p-4 rounded-full shadow-2xl hover:bg-orange-50 active:scale-90 transition-all">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#ff5722]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -44,52 +33,45 @@
     </button>
 
     <script>
-        const ncrBounds = [[28.0000, 76.5000], [29.2000, 77.8000]];
+        // Mukherjee Nagar Tight Bounds
+        const mukhBounds = [
+            [28.7050, 77.2050], 
+            [28.7180, 77.2250]  
+        ];
 
         const map = L.map('map', { 
             zoomControl: true,
-            maxBounds: ncrBounds,
+            maxBounds: mukhBounds,
             maxBoundsViscosity: 1.0, 
-            maxZoom: 18,
-            // Smooth Zooming settings
-            zoomAnimation: true,
-            fadeAnimation: true,
-            inertia: true, // Momentum dragging enable
-            inertiaDelay: 100
+            maxZoom: 19
         });
 
-        // --- AGGRESSIVE CACHING TILE LAYER ---
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            bounds: L.latLngBounds(ncrBounds),
+            bounds: L.latLngBounds(mukhBounds),
             noWrap: true,
-            
-            // Ye wo setting hai jo aapko chahiye:
-            // 1. updateWhenIdle: Drag karte waqt render engine ko 'shant' rakhta hai.
-            updateWhenIdle: true, 
-            
-            // 2. keepBuffer: 40 tiles ka buffer matlab poora NCR pehle hi memory mein load ho jayega.
-            // Screen ke bahar bhi map render rahega.
-            keepBuffer: 40, 
-            
-            // 3. updateWhenZooming: Zoom ke beech mein naye tiles mangna band.
-            updateWhenZooming: false,
-            
-            // 4. edgeBufferTiles: Screen ke kinaro par extra tiles pehle se fetch karna.
-            edgeBufferTiles: 3,
-            
-            // Performance flags
-            className: 'stable-tiles'
+            keepBuffer: 20,
+            updateWhenIdle: true
         }).addTo(map);
 
-        // Smart Zoom and Layout refresh
-        function updateMinZoom() {
-            const minZoomNeeded = map.getBoundsZoom(ncrBounds, true); 
-            map.setMinZoom(minZoomNeeded);
-            map.setView([28.6139, 77.2090], minZoomNeeded);
-            map.invalidateSize(); // Force refresh to ensure no crop
+        // --- DYNAMIC MIN ZOOM LOGIC ---
+        function fixZoomAndBounds() {
+            // 'inside: true' ensures the map fills the container with the bounds area
+            // and won't show any empty gaps on the sides.
+            const safeMinZoom = map.getBoundsZoom(mukhBounds, true); 
+            map.setMinZoom(safeMinZoom);
+            
+            // Initial view set to Mukherjee Nagar center
+            map.setView([28.7105, 77.2130], safeMinZoom);
         }
 
-        updateMinZoom();
+        // Run on load
+        fixZoomAndBounds();
+
+        // Fix on resize (e.g. mobile rotation)
+        window.addEventListener('resize', () => {
+            fixZoomAndBounds();
+            map.invalidateSize();
+        });
 
         // Markers
         const rooms = [
@@ -97,7 +79,7 @@
         ];
 
         rooms.forEach(r => {
-            L.marker(r.coords).addTo(map).bindPopup(`<div class="p-4"><b>${r.name}</b><br>${r.price}</div>`);
+            L.marker(r.coords).addTo(map).bindPopup(`<b>${r.name}</b><br>${r.price}`);
         });
 
         document.getElementById('locate-btn').onclick = () => {
@@ -105,16 +87,14 @@
         };
 
         map.on('locationfound', (e) => {
-            if (L.latLngBounds(ncrBounds).contains(e.latlng)) {
-                map.flyTo(e.latlng, 16, { animate: true, duration: 1.5 }); 
+            if (L.latLngBounds(mukhBounds).contains(e.latlng)) {
+                map.flyTo(e.latlng, 17, { animate: true, duration: 1.5 }); 
                 L.marker(e.latlng, {
                     icon: L.divIcon({ className: 'custom-icon', html: '<div class="user-loc-marker"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
                 }).addTo(map);
+            } else {
+                alert("Aap Mukherjee Nagar area ke bahar hain.");
             }
-        });
-
-        window.addEventListener('resize', () => {
-            updateMinZoom();
         });
     </script>
 </body>
